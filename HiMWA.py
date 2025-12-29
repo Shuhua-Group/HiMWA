@@ -550,7 +550,7 @@ def bootstrapping(nbootstrap, alpha, cutoff, mtype,Ewave,Fwave):
 			else:
 				continue ##
 
-			hma_type = f"HMA {Ewave_boots}-{Fwave_boots}"
+			hma_type = f"HiMWA {Ewave_boots}-{Fwave_boots}"
 			hma_model_count[hma_type] = hma_model_count.get(hma_type, 0) + 1
 
 			if boots_SelM[1]==mtype and Ewave_boots==Ewave and Fwave_boots==Fwave:
@@ -711,7 +711,7 @@ def outA():
 				if I[i] in Ftime:
 					pop.append(pop3+'_'+pop4)
 
-			fout.write('Best Model:\tHMA '+' '+str(Ewave)+'-'+str(Fwave)+' Model\n')
+			fout.write('Best Model:\tHiMWA '+' '+str(Ewave)+'-'+str(Fwave)+' Model\n')
 			fout.write("\t".join(['', pop1, str(tab)+'(G)', str(a1)])+"\n")
 			fout.write("\t".join(['', pop2, str(tab)+'(G)', str(a2)])+"\n")
 			fout.write("\t".join(['', pop3, str(tcd)+'(G)', str(a3)])+"\n")
