@@ -9,7 +9,7 @@ available at:
 https://github.com/Shuhua-Group/HiMWA/releases/tag/v1.0.0
 
 ## Input Files 
-Ancestral tracts can be obtained from standard local ancestry inference (LAI) tools such as **RFMix2** or **FLARE**. To facilitate reproducibility and broader application, we provide example scripts (in the [`other_script/`](other_script/) directory, 'flare2seg.py' and 'msp2seg.py') that convert LAI outputs into HiMWA-compatible segment files.<br>
+Ancestral tracts can be obtained from standard local ancestry inference (LAI) tools such as **RFMix2** or **FLARE**. To facilitate reproducibility and broader application, we provide example scripts (in the [`other_script/`](other_script/) directory, `flare2seg.py` and `msp2seg.py`) that convert LAI outputs into HiMWA-compatible segment files.<br>
 The format of input ancestral tracts file is same as HierarchyMix. Each row represents an ancestral tract characterized by the following parameters: (1) the genetic distance of start-point (in Morgans), (2) the genetic distance of end-point (in Morgans), (3) the ancestry of origin, (4) the index of admixed haplotype, and (5) the chromosome label. All genetic positions are specified in Morgans (M) with decimal precision. An example segmentation file `example.seg` is provided in the [`examples/`](examples/) directory.  
 
 To run with this example data:
