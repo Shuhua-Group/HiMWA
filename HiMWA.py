@@ -15,16 +15,13 @@ current_dir = os.getcwd()
 #model1: hierarchical admixture model
 #model2: sequential admixture model
 
-# ================ 通用工具函数 ================
 def safe_execute(command, output_file=None, retries=3, delay=2):
-	"""安全执行命令并校验输出文件"""
 	for attempt in range(retries):
 		try:
 			if "-i" in command:
 				input_file = Path(command.split("-i")[1].split()[0].strip())
 				if not input_file.exists():
-					raise FileNotFoundError(f"输入文件不存在: {input_file}")
-
+					raise FileNotFoundError(f"not exist: {input_file}")
 			result = subprocess.run(
 				command,
 				shell=True,
@@ -32,9 +29,8 @@ def safe_execute(command, output_file=None, retries=3, delay=2):
 				stdout=subprocess.PIPE,
 				stderr=subprocess.PIPE,
 				text=True,
-				timeout=300  # FIXED: 添加超时防止卡死
+				timeout=300  
 			)
-			# 校验输出文件
 			if output_file and not os.path.exists(output_file):
 				raise FileNotFoundError(f"Command succeeded but output {output_file} missing")
 			return result
@@ -44,20 +40,18 @@ def safe_execute(command, output_file=None, retries=3, delay=2):
 	raise RuntimeError(f"Command failed after {retries} retries: {command}")
 
 def atomic_write(content, target_path, temp_dir=".tmp"):
-    """原子化写入文件"""
-    os.makedirs(temp_dir, exist_ok=True)
-    temp_path = os.path.join(temp_dir, os.path.basename(target_path))
-    with open(temp_path, 'w') as f:
-        f.write(content)
-    shutil.move(temp_path, target_path)  # FIXED: 原子移动
+	os.makedirs(temp_dir, exist_ok=True)
+	temp_path = os.path.join(temp_dir, os.path.basename(target_path))
+	with open(temp_path, 'w') as f:
+		f.write(content)
+	shutil.move(temp_path, target_path)
 
 def wait_for_file(path, timeout=30, interval=0.5):
-    """等待文件出现"""
-    start = time.time()
-    while not os.path.exists(path):
-        if time.time() - start > timeout:
-            raise FileNotFoundError(f"Timeout waiting for {path}")
-        time.sleep(interval)
+	start = time.time()
+	while not os.path.exists(path):
+		if time.time() - start > timeout:
+			raise FileNotFoundError(f"Timeout waiting for {path}")
+		time.sleep(interval)
 
 #switch number of each haplotype
 def get_HapNum(NHap):
@@ -344,7 +338,9 @@ def getM1_T_len(mlist,ulist, Ie, If, alpha_e, alpha_f, I, Etime, Ftime):
 	tcd_D = int((m4-e4*num_d)/(e4*m4*(1-a4)))
 	tcd = int((tcd_C+tcd_D)/2)
 
-	return (tab, tcd)
+	if tab > Etime[0] and tcd > Etime[0]:
+		return (tab, tcd)
+	return None
 
 # m1 estimate admixture time based on the number distribution of ancestral switch points
 def getM1_T_trans(m, NKV):
@@ -420,7 +416,7 @@ def selectModel(Hap_Index):
 	likeli_dict={}
 	SumM = getSumM(Hap_Index)
 	SumNKV = getSumNKV(Hap_Index)
-							
+	
 	for model in model1_list:
 		SumM_model = tranSumM(SumM, model)	
 		SumU_model = getSumU(Hap_Index ,model)	
@@ -507,9 +503,10 @@ def bootstrapping(nbootstrap, alpha, cutoff, mtype,Ewave,Fwave):
 
 	M1N = 0
 	with tempfile.TemporaryDirectory() as tmpdir:
+		hma_model_count = {}
 		for j in range(nbootstrap):
 			Hap_Index_boots = list(np.random.choice(Hap_Index_all, size = Nhap, replace=True))
-			boots_SelM = selectModel(Hap_Index_boots)		
+			boots_SelM = selectModel(Hap_Index_boots)
 			boots_SelM = boots_SelM.split("_")
 
 			m_M = tranSumM(getSumM(Hap_Index_boots), mtype)
@@ -521,19 +518,17 @@ def bootstrapping(nbootstrap, alpha, cutoff, mtype,Ewave,Fwave):
 				merged_boots.append(sub_boots)
 			
 			boots_seg = pd.concat(merged_boots, ignore_index=True)
-			# 原子化写入文件
+
 			boots_seg_path = os.path.join(tmpdir, f'boots.{j}.seg')
 			boots_seg.to_csv(boots_seg_path, sep='\t', index=False, header=False)
-			
-			# 生成中间文件到临时目录
+
 			segEF_path = os.path.join(tmpdir, f'segEF.boots.{j}.seg')
 			segEF(boots_seg_path, segEF_path, boots_SelM[1])
 			
 			ef_out_path = os.path.join(tmpdir, f'EF.boots.{j}.out')
 			cmd = f'{executable_path} -i {segEF_path} -o {ef_out_path} -l {cutoffEF} -M DMode'
-			safe_execute(cmd, ef_out_path)  # FIXED: 安全执行
+			safe_execute(cmd, ef_out_path) 
 			
-			# 读取输出
 			wait_for_file(ef_out_path)
 			with open(ef_out_path, 'r') as fmw:
 				c = [line.split() for line in fmw]
@@ -552,12 +547,18 @@ def bootstrapping(nbootstrap, alpha, cutoff, mtype,Ewave,Fwave):
 				for i in range(Fwave_boots):
 					Ftime.append(int(c[1+i+Ewave_boots][1][:-3]))
 					Falpha.append(float(c[1+i+Ewave_boots][2]))
+			else:
+				continue ##
+
+			hma_type = f"HMA {Ewave_boots}-{Fwave_boots}"
+			hma_model_count[hma_type] = hma_model_count.get(hma_type, 0) + 1
 
 			if boots_SelM[1]==mtype and Ewave_boots==Ewave and Fwave_boots==Fwave:
 				M1N += 1
 
 				aA,aB,aC,aD=M1_admi_pro(m_M)
 
+				I_boots_all = sorted(Etime+Ftime,reverse = True)
 				I_boots = sorted(set(Etime+Ftime),reverse = True)
 				Ie, If = [], []
 				alpha_e, alpha_f = [], []
@@ -570,24 +571,33 @@ def bootstrapping(nbootstrap, alpha, cutoff, mtype,Ewave,Fwave):
 						If.append(i)
 						alpha_e.append(Falpha[Ftime.index(I_boots[i])])
 						alpha_f.append(Falpha[Ftime.index(I_boots[i])])
+
 				alpha_e.pop(1)
 				alpha_f.pop(0)
 				Etime = sorted(Etime,reverse=True)
 				Ftime = sorted(Ftime,reverse=True)
-				tab, tcd =getM1_T_len(m_M, u_M, Ie, If, alpha_e, alpha_f, I_boots, Etime, Ftime)
-
+				res =getM1_T_len(m_M, u_M, Ie, If, alpha_e, alpha_f, I_boots, Etime, Ftime)
+				
+				if res is None:
+					continue
+				
+				tab, tcd = res
 				aA_list.append(aA)
 				aC_list.append(aC)
 				tab_list.append(tab)
 				tcd_list.append(tcd)
-				for i in range(len(I_boots)):
-					key_t = f"t{i+1}_list"
-					key_a = f"a{i+1}_list"
-					t_dict.setdefault(key_t, []).append(I_boots[i])
-					a_dict.setdefault(key_a, []).append(alpha_e[i])
+				for i in range(1,len(I_boots_all)):
+					key_t = f"t{i}_list"
+					key_a = f"a{i}_list"
+					t_dict.setdefault(key_t, []).append(I_boots_all[i])
+					a_dict.setdefault(key_a, []).append(alpha_e[i-1])
 
 	a = 1 - alpha
 	count=len(tab_list)
+
+	if count == 0:
+		return ({}, {}, 0)
+
 	k1 = max(0, int(count * a / 2) - 1)
 	if k1<0:
 		k1=0
@@ -601,13 +611,13 @@ def bootstrapping(nbootstrap, alpha, cutoff, mtype,Ewave,Fwave):
 	tcdR = sorted(tcd_list)[k2]
 	t_CI={'tab_CI':[tabL,tabR],'tcd_CI':[tcdL,tcdR]}
 
-	for i in range(len(I_boots)):
-		key_t = f"t{i+1}_list"
+	for i in range(1,len(I_boots_all)):
+		key_t = f"t{i}_list"
 		current_list = t_dict[key_t]
 		sorted_list = sorted(current_list)
 		t_listL = sorted_list[k1]
 		t_listR = sorted_list[k2]
-		t_CI[f"t{i+1}_CI"] = [t_listL, t_listR]
+		t_CI[f"t{i}_CI"] = [t_listL, t_listR]
 
 	aAL,aAR=getCI(aA_list,k1,k2)
 	aCL,aCR=getCI(aC_list,k1,k2)
@@ -615,20 +625,20 @@ def bootstrapping(nbootstrap, alpha, cutoff, mtype,Ewave,Fwave):
 
 	a1_listL = None
 	a1_listR = None
-	for i in range(len(I_boots)):
-		key_a = f"a{i+1}_list"
+	for i in range(1,len(I_boots_all)):
+		key_a = f"a{i}_list"
 		current_list = a_dict[key_a]
 		sorted_list = sorted(current_list)
 		a_listL = sorted_list[k1]
 		a_listR = sorted_list[k2]
-		a_CI[f"a{i+1}_CI"] = [a_listL, a_listR]
-		if i == 0:
+		a_CI[f"a{i}_CI"] = [a_listL, a_listR]
+		if i == 1:
 			a1_listL = a_listL
 			a1_listR = a_listR
 
 	a_CI['aF_CI'] = [round(1-a1_listR,6),round(1-a1_listL,6)]
 	
-	return (t_CI,a_CI,M1N)
+	return (t_CI,a_CI,M1N, hma_model_count)
 
 def outA():
 	m_M = tranSumM(getSumM(Hap_Index_all), all_SelM[1])
@@ -655,7 +665,7 @@ def outA():
 				Ewave, Fwave = 1, 1
 				Etime, Ftime = [int(c[1][1][:-3])],[int(c[2][1][:-3])]
 				Ealpha, Falpha = [float(c[1][2])], [float(c[2][2])]
-			if c[0][2] == 'Multi':
+			elif c[0][2] == 'Multi':
 				Ewave, Fwave = int(c[0][3][0]), int(c[0][3][2])
 				for i in range(Ewave):
 					Etime.append(int(c[1+i][1][:-3]))
@@ -663,10 +673,15 @@ def outA():
 				for i in range(Fwave):
 					Ftime.append(int(c[1+i+Ewave][1][:-3]))
 					Falpha.append(float(c[1+i+Ewave][2]))
-
+			else:
+				fout.write('No suitable model!(for recent phase)\n')
+				return None
+			
+			I_all = sorted(Etime + Ftime, reverse=True) ##
 			I = sorted(set(Etime+Ftime),reverse = True)
 			Ie, If = [], []
 			alpha_e, alpha_f = [], []
+
 			for i in range(len(I)):
 				if I[i] in Etime:
 					Ie.append(i)
@@ -676,11 +691,18 @@ def outA():
 					If.append(i)
 					alpha_e.append(Falpha[Ftime.index(I[i])])
 					alpha_f.append(Falpha[Ftime.index(I[i])])
+
 			alpha_e.pop(1)
 			alpha_f.pop(0)
 			Etime = sorted(Etime,reverse=True)
 			Ftime = sorted(Ftime,reverse=True)
-			tab, tcd =getM1_T_len(m_M, u_M, Ie, If, alpha_e, alpha_f, I, Etime, Ftime)
+
+			res =getM1_T_len(m_M, u_M, Ie, If, alpha_e, alpha_f, I, Etime, Ftime)
+
+			if res is None:
+				fout.write('No suitable model!(contradictory admixture time)\n')
+				return None
+			tab, tcd = res
 
 			pop = []
 			for i in range(1,len(I)):
@@ -689,7 +711,7 @@ def outA():
 				if I[i] in Ftime:
 					pop.append(pop3+'_'+pop4)
 
-			fout.write('Best Model:\tHierarchical '+str(c[0][2])+' '+str(Ewave)+'-'+str(Fwave)+' Admixture Model\n')
+			fout.write('Best Model:\tHMA '+' '+str(Ewave)+'-'+str(Fwave)+' Model\n')
 			fout.write("\t".join(['', pop1, str(tab)+'(G)', str(a1)])+"\n")
 			fout.write("\t".join(['', pop2, str(tab)+'(G)', str(a2)])+"\n")
 			fout.write("\t".join(['', pop3, str(tcd)+'(G)', str(a3)])+"\n")
@@ -697,13 +719,13 @@ def outA():
 			fout.write("\t".join(['', pop1+'_'+pop2, str(I[0])+'(G)', str(alpha_e[0])])+"\n")
 			fout.write("\t".join(['', pop3+'_'+pop4, str(I[0])+'(G)', str(alpha_f[0])])+"\n")
 			for i in range(len(pop)):
-				fout.write("\t".join(['', pop[i], str(I[i+1])+'(G)', str(alpha_e[i+1])])+"\n")
+				fout.write("\t".join(['', pop[i], str(I_all[i+2])+'(G)', str(alpha_e[i+1])])+"\n")
 
 			if Nboots > 0:  
-				t_CI,a_CI,M1N=bootstrapping(Nboots,ci,cutoff,all_SelM[1],Ewave,Fwave)
+				t_CI,a_CI,M1N, hma_model_count=bootstrapping(Nboots,ci,cutoff,all_SelM[1],Ewave,Fwave)
 				fout.write('--------------------------------------------\n')
 				fout.write('Bootstrapping details\n')
-				fout.write('Bootstrapping support ratio:'+str(M1N/Nboots*100)+'% ('+str(M1N)+"/"+str(Nboots)+")\n")
+				fout.write('Bootstrapping support ratio for Best Model:'+str(M1N/Nboots*100)+'% ('+str(M1N)+"/"+str(Nboots)+")\n")
 				fout.write("\t".join(['', pop1, str(t_CI['tab_CI'])+'(G)', str(a_CI['aA_CI'])])+"\n")
 				fout.write("\t".join(['', pop2, str(t_CI['tab_CI'])+'(G)', str(a_CI['aB_CI'])])+"\n")
 				fout.write("\t".join(['', pop3, str(t_CI['tcd_CI'])+'(G)', str(a_CI['aC_CI'])])+"\n")
@@ -718,29 +740,35 @@ def outA():
 						str(t_CI.get(t_key, 'NA'))+'(G)', 
 						str(a_CI.get(a_key, 'NA'))
 					]) + "\n")
+
+				fout.write('--------------------------------------------\n')
+				fout.write('Bootstrapping support ratios:\n')
+				for model, count in hma_model_count.items():
+					support = count / Nboots * 100
+					fout.write(f"{model}:\t{support:.2f}%\t({count}/{Nboots})\n")
+
 		return [a1,a2,a3,a4], [tab,tcd]
 
 	else:
 		with tempfile.TemporaryDirectory() as tmpdir:
 			input_file = Path(args.input).resolve()
 			mw_seg = os.path.join(tmpdir, "MW.seg")
-			output_file = Path(args.output).resolve()
 
 			safe_execute(
 				f"awk '{{print $1,$2,$3}}' {input_file} > {mw_seg}",
-				output_file=mw_seg
+				output_file=str(mw_seg)
 			)
+			name_out = Path(args.output+'.txt').resolve()
 
-			cmd_main = (
-				f"{executable_path} -i {mw_seg} -o {output_file} -l {cutoff} -M DMode"
-			)
-			safe_execute(cmd_main, output_file)
+			cmd = f"{executable_path} -i {mw_seg} -o {name_out} -l {cutoff} -M DMode"
+			safe_execute(cmd, name_out)
 
 			if Nboots > 0:
+				boot_output = Path(args.output+'.txt').resolve()
 				cmd_boots = (
-					f"{executable_path} -i {mw_seg} -o {output_file} -l {cutoff} -M DMode -b {Nboots}"
+					f"{executable_path} -i {mw_seg} -o {boot_output} -l {cutoff} -M DMode -b {Nboots}"
 				)
-				safe_execute(cmd_boots, output_file, timeout=600)
+				safe_execute(cmd_boots, boot_output, timeout=600)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--input", type=str, required=True, \
@@ -815,7 +843,7 @@ all_hapNum_dict=get_HapNum(Nhap)
 all_SelM = selectModel(Hap_Index_all)
 
 if all_SelM == "none":
-	fout.write('No suitable model!\n')
+	fout.write('No suitable model!(for model selection)\n')
 else:
 	all_SelM = all_SelM.split('_')
 	pop1 = anc_type_dict[all_SelM[1][0]]
@@ -823,6 +851,8 @@ else:
 	pop3 = anc_type_dict[all_SelM[1][2]]
 	pop4 = anc_type_dict[all_SelM[1][3]]
 
-	outA()
+	res = outA()
+	if res is None:
+		pass
 	
 fout.close()
