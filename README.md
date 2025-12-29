@@ -1,3 +1,9 @@
+## Version
+
+The analyses presented in the manuscript were performed using **HiMWA v1.0.0**,
+available at:
+https://github.com/Shuhua-Group/HiMWA/releases/tag/v1.0.0
+
 # HiMWA
 A Hierarchical Multiple-Wave Admixture Model for Inferring Complex Admixture Histories
 
