@@ -1,25 +1,30 @@
-## Version
-
-The analyses presented in the manuscript were performed using **HiMWA v1.0.0**,
-available at:
-https://github.com/Shuhua-Group/HiMWA/releases/tag/v1.0.0
-
 # HiMWA
 A Hierarchical Multiple-Wave Admixture Model for Inferring Complex Admixture Histories
 
 Please ensure `HiMWA.py` is in the same directory as the [`src/`](src/) folder.
 
+## Version
+The analyses presented in the manuscript were performed using **HiMWA v1.0.0**,
+available at:
+https://github.com/Shuhua-Group/HiMWA/releases/tag/v1.0.0
+
 ## Input Files 
+Ancestral tracts can be obtained from standard local ancestry inference (LAI) tools such as RFMix2 or FLARE. To facilitate reproducibility and broader application, we provide example scripts (['other_script/flare2seg.py'] and ['other_script/msp2seg.py']) that convert LAI outputs into HiMWA-compatible segment files.
 The format of input ancestral tracts file is same as HierarchyMix. Each row represents an ancestral tract characterized by the following parameters: (1) the genetic distance of start-point (in Morgans), (2) the genetic distance of end-point (in Morgans), (3) the ancestry of origin, (4) the index of admixed haplotype, and (5) the chromosome label. All genetic positions are specified in Morgans (M) with decimal precision. An example segmentation file `example.seg` is provided in the [`examples/`](examples/) directory.  
 
-## Output Files 
-The format of output model file is same as MultiWaver series and HierarchyMix software. The example generates an output file `example.txt`.
-
-To run with this sample data:
+To run with this example data:
 
 ```bash
 python HiMWA.py --input examples/example.seg --output examples/example
 ```
+Optional arguments allow more refined analyses. For example, bootstrap resampling
+and tract-length filtering can be specified as:
+```bash
+python HiMWA.py --input examples/example.seg --output examples/example --bootstrap 100 --lower 0.003 --lowerEF 0.02
+```
+
+## Output Files 
+The format of output model file is same as MultiWaver series and HierarchyMix software. The example generates an output file `example.txt`.
 
 ## Arguments and Options 
 | Flag           | Type    | Description                                  | Default     |
