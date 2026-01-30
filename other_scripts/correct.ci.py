@@ -1,7 +1,7 @@
 import numpy as np
 import argparse
 
-def correctCI(input,boots,ci,output):
+def correctCI(input,boots,ci,output,nboots):
 	f = open(input,'r')
 	g = open(output,'w')
 	
@@ -23,7 +23,7 @@ def correctCI(input,boots,ci,output):
 	
 	t1d, t1u, t2d, t2u, t3d, t3u = [],[],[],[],[],[]
 	with open(boots, 'r') as b:
-		for j in range(500):
+		for j in range(nboots):
 			line1 = b.readline()
 			betas = line1.strip().split()
 			b1 = float(betas[1])
@@ -54,13 +54,15 @@ def correctCI(input,boots,ci,output):
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser()
 	parser.add_argument("--input", type=str, required=True, \
-											help="output file of HiMWA")
-	parser.add_argument("--boots", type=str, required=True, \
+											help="The output file of HiMWA")
+	parser.add_argument("--bootsFile", type=str, required=True, \
 											help="The regression coefficient file obtained by bootstrapping")
 	parser.add_argument("--ci", type=float, required=False, default=0.95, \
 											help="The confidence level of bootstrapping confidence interval")
+    parser.add_argument("--nboots", type=int, required=False, default=500, \
+											help="The number of bootstrapping regression coefficients")
 	parser.add_argument("--output", type=str, required=False, default="output", \
 											help="Prefix of output file")
 	args = parser.parse_args()
 	
-	correctCI(args.input,args.boots,args.ci,args.output)
+	correctCI(args.input,args.bootsFile,args.ci,args.output,args.nboots)
