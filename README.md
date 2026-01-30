@@ -39,3 +39,4 @@ The format of output model file is same as MultiWaver series and HierarchyMix so
 
 ## Notes 
 It should be noted that the model selection of HiMWA may be unreliable for admixed populations with extremely biasd admixture proportions. Furthermore, in scenarios with multiple recent admixture waves, the inferred times of recent admixture events by HiMWA may be overestimated. It is advised to correct the overestimation of the admixture times referring the strategy in this study under specific model configurations.
+We provide a script ([`other_script/correct.ci.py`](other_script/correct.ci.py)) for correcting CI of recent admixture times. `--input` is the HiMWA output from real data analysis, and `--boots` provides regression coefficients obtained from bootstrap resampling of simulation results under the consistent model configuration.
